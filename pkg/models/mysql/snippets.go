@@ -35,7 +35,7 @@ func (m *SnippetModel) Get(id int) (*models.Snippet, error) {
 	s := &models.Snippet{}
 	err := row.Scan(&s.ID, &s.Title, &s.Content, &s.Created, &s.Expires)
 	if err == sql.ErrNoRows {
-		return nil, models.ErrnoRecord
+		return nil, models.ErrNoRecord
 	} else if err != nil {
 		return nil, err
 	}

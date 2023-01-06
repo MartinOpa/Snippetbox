@@ -5,11 +5,14 @@ import (
 	"path/filepath"
 	"time"
 
+	"martinop.net/snippetbox/pkg/forms"
 	"martinop.net/snippetbox/pkg/models"
 )
 
 type templateData struct {
 	CurrentYear int
+	Flash       string
+	Form        *forms.Form
 	Snippet     *models.Snippet
 	Snippets    []*models.Snippet
 }
