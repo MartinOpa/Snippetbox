@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"database/sql"
 	"flag"
 	"html/template"
@@ -15,12 +16,17 @@ import (
 	"github.com/golangcollege/sessions"
 )
 
+type contextKey string
+
+var contextKeyUser = contextKey("user")
+
 type application struct {
 	errorLog      *log.Logger
 	infoLog       *log.Logger
 	session       *sessions.Session
 	snippets      *mysql.SnippetModel
 	templateCache map[string]*template.Template
+	users         *mysql.UserModel
 }
 
 func main() {
@@ -51,6 +57,7 @@ func main() {
 
 	session := sessions.New([]byte(*secret))
 	session.Lifetime = 12 * time.Hour
+	session.Secure = true
 
 	app := &application{
 		errorLog:      errorLog,
@@ -58,18 +65,28 @@ func main() {
 		session:       session,
 		snippets:      &mysql.SnippetModel{DB: db},
 		templateCache: templateCache,
+		users:         &mysql.UserModel{DB: db},
+	}
+
+	tlsConfig := &tls.Config{
+		PreferServerCipherSuites: true,                                     // Go's favoured cipher suites given preference - strong cipher suite / forward secrecy
+		CurvePreferences:         []tls.CurveID{tls.X25519, tls.CurveP256}, // less CPU intensive than other options
 	}
 
 	//http.Server struct
 	srv := &http.Server{
-		Addr:     *addr,
-		ErrorLog: errorLog,
-		Handler:  app.routes(),
+		Addr:         *addr,
+		ErrorLog:     errorLog,
+		Handler:      app.routes(),
+		TLSConfig:    tlsConfig,
+		IdleTimeout:  time.Minute,      // if ReadTimeOut is set but IdleTimeout isn't, IdleTimeout defaults to ReadTimeout
+		ReadTimeout:  5 * time.Second,  // short read timeout = prevents slow client attacks
+		WriteTimeout: 10 * time.Second, //
 	}
 
-	infoLog.Printf("Starting server on %s", *addr) //log.Println("Starting server on %s", *addr)
-	error := srv.ListenAndServe()                  //err := http.ListenAndServe(*addr, mux)
-	errorLog.Fatal(error)                          //instead of log.Fatal(err)
+	infoLog.Printf("Starting server on %s", *addr)
+	error := srv.ListenAndServeTLS("./tls/cert.pem", "./tls/key.pem") // both files in gitignore
+	errorLog.Fatal(error)
 }
 
 func openDB(dsn string) (*sql.DB, error) {
