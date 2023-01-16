@@ -147,3 +147,10 @@ func (app *application) logoutUser(w http.ResponseWriter, r *http.Request) {
 	app.session.Put(r, "flash", "Logged out successfully!")
 	http.Redirect(w, r, "/", 303)
 }
+
+func (app *application) ping(w http.ResponseWriter, r *http.Request) {
+	if _, err := w.Write([]byte("OK")); err != nil {
+		app.serverError(w, err)
+		return
+	}
+}
